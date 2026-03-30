@@ -96,7 +96,7 @@ static int test_particle_pool(void) {
 static int test_spatial_chunks(void) {
     printf("Testing spatial chunks...\n");
 
-    SpatialSystem* sys = spatial_create(1024.0f, 1024.0f, 1000);
+    SpatialSystem* sys = spatial_create(1024.0f, 1024.0f, 1000, 0.0f);  // 0 = use default chunk size
     ASSERT_TRUE(sys != NULL, "Spatial system should be created");
 
     ParticlePool* pool = pool_create(100);
@@ -134,6 +134,49 @@ static int test_spatial_chunks(void) {
     // Clean up
     spatial_destroy(sys);
     pool_destroy(pool);
+    printf("  PASS\n");
+    return 0;
+}
+
+static int test_spatial_chunk_configurable(void) {
+    printf("Testing configurable spatial chunks...\n");
+
+    // Test default chunk size (0.0f should use CHUNK_SIZE = 64.0f)
+    SpatialSystem* sys1 = spatial_create(1024.0f, 1024.0f, 1000, 0.0f);
+    ASSERT_TRUE(sys1 != NULL, "System with default chunk size should be created");
+    ASSERT_FLOAT_EQ(spatial_get_chunk_size(sys1), 64.0f, 0.001f, "Default chunk size should be 64.0f");
+
+    uint32_t cx1, cy1;
+    spatial_get_dimensions(sys1, &cx1, &cy1);
+    ASSERT_EQ(cx1, 16u, "1024/64 = 16 chunks in X");  // 1024 / 64 = 16
+    ASSERT_EQ(cy1, 16u, "1024/64 = 16 chunks in Y");
+    ASSERT_EQ(spatial_get_chunk_count(sys1), 256u, "Should have 16*16 = 256 chunks");
+    spatial_destroy(sys1);
+
+    // Test custom chunk size (128.0f)
+    SpatialSystem* sys2 = spatial_create(1024.0f, 1024.0f, 1000, 128.0f);
+    ASSERT_TRUE(sys2 != NULL, "System with custom chunk size should be created");
+    ASSERT_FLOAT_EQ(spatial_get_chunk_size(sys2), 128.0f, 0.001f, "Custom chunk size should be 128.0f");
+
+    uint32_t cx2, cy2;
+    spatial_get_dimensions(sys2, &cx2, &cy2);
+    ASSERT_EQ(cx2, 8u, "1024/128 = 8 chunks in X");  // 1024 / 128 = 8
+    ASSERT_EQ(cy2, 8u, "1024/128 = 8 chunks in Y");
+    ASSERT_EQ(spatial_get_chunk_count(sys2), 64u, "Should have 8*8 = 64 chunks");
+    spatial_destroy(sys2);
+
+    // Test small chunk size (32.0f) for finer granularity
+    SpatialSystem* sys3 = spatial_create(1024.0f, 1024.0f, 1000, 32.0f);
+    ASSERT_TRUE(sys3 != NULL, "System with small chunk size should be created");
+    ASSERT_FLOAT_EQ(spatial_get_chunk_size(sys3), 32.0f, 0.001f, "Small chunk size should be 32.0f");
+
+    uint32_t cx3, cy3;
+    spatial_get_dimensions(sys3, &cx3, &cy3);
+    ASSERT_EQ(cx3, 32u, "1024/32 = 32 chunks in X");  // 1024 / 32 = 32
+    ASSERT_EQ(cy3, 32u, "1024/32 = 32 chunks in Y");
+    ASSERT_EQ(spatial_get_chunk_count(sys3), 1024u, "Should have 32*32 = 1024 chunks");
+    spatial_destroy(sys3);
+
     printf("  PASS\n");
     return 0;
 }
@@ -227,6 +270,7 @@ int main(void) {
     result |= test_material_types();
     result |= test_particle_pool();
     result |= test_spatial_chunks();
+    result |= test_spatial_chunk_configurable();
     result |= test_particle_system();
     result |= test_50k_particles();
 

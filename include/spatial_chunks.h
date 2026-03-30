@@ -54,8 +54,13 @@ typedef struct SpatialSystem {
 } SpatialSystem;
 
 // Spatial system lifecycle
-SpatialSystem* spatial_create(float world_width, float world_height, uint32_t max_particles);
+SpatialSystem* spatial_create(float world_width, float world_height, uint32_t max_particles, float chunk_size);
 void spatial_destroy(SpatialSystem* system);
+
+// Chunk configuration query
+float spatial_get_chunk_size(const SpatialSystem* system);
+uint32_t spatial_get_chunk_count(const SpatialSystem* system);
+void spatial_get_dimensions(const SpatialSystem* system, uint32_t* out_chunks_x, uint32_t* out_chunks_y);
 
 // Chunk operations
 ChunkId spatial_get_chunk_id(const SpatialSystem* system, float x, float y);

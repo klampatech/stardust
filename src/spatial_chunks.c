@@ -5,7 +5,7 @@
 #include <string.h>
 #include "spatial_chunks.h"
 
-SpatialSystem* spatial_create(float world_width, float world_height, uint32_t max_particles) {
+SpatialSystem* spatial_create(float world_width, float world_height, uint32_t max_particles, float chunk_size) {
     SpatialSystem* system = (SpatialSystem*)malloc(sizeof(SpatialSystem));
     if (!system) return NULL;
 
@@ -15,11 +15,12 @@ SpatialSystem* spatial_create(float world_width, float world_height, uint32_t ma
         return NULL;
     }
 
-    system->chunk_size = CHUNK_SIZE;
+    // Use provided chunk_size or default to CHUNK_SIZE
+    system->chunk_size = (chunk_size > 0.0f) ? chunk_size : CHUNK_SIZE;
     system->world_width = world_width;
     system->world_height = world_height;
-    system->chunks_x = (uint32_t)ceilf(world_width / CHUNK_SIZE);
-    system->chunks_y = (uint32_t)ceilf(world_height / CHUNK_SIZE);
+    system->chunks_x = (uint32_t)ceilf(world_width / system->chunk_size);
+    system->chunks_y = (uint32_t)ceilf(world_height / system->chunk_size);
 
     if (system->chunks_x > MAX_CHUNKS_X) system->chunks_x = MAX_CHUNKS_X;
     if (system->chunks_y > MAX_CHUNKS_Y) system->chunks_y = MAX_CHUNKS_Y;
@@ -51,8 +52,9 @@ void spatial_destroy(SpatialSystem* system) {
 }
 
 ChunkId spatial_get_chunk_id(const SpatialSystem* system, float x, float y) {
-    int32_t cx = (int32_t)floorf(x * CHUNK_SIZE_INV);
-    int32_t cy = (int32_t)floorf(y * CHUNK_SIZE_INV);
+    float chunk_size_inv = 1.0f / system->chunk_size;
+    int32_t cx = (int32_t)floorf(x * chunk_size_inv);
+    int32_t cy = (int32_t)floorf(y * chunk_size_inv);
 
     // Clamp to valid range
     if (cx < 0) cx = 0;
@@ -174,11 +176,12 @@ void spatial_iter_chunk_range(SpatialSystem* system, float center_x, float cente
 
     iter_out->system = system;
 
-    // Calculate chunk range
-    int32_t min_cx = (int32_t)floorf((center_x - radius) * CHUNK_SIZE_INV);
-    int32_t max_cx = (int32_t)floorf((center_x + radius) * CHUNK_SIZE_INV);
-    int32_t min_cy = (int32_t)floorf((center_y - radius) * CHUNK_SIZE_INV);
-    int32_t max_cy = (int32_t)floorf((center_y + radius) * CHUNK_SIZE_INV);
+    // Calculate chunk range using system's chunk_size
+    float chunk_size_inv = 1.0f / system->chunk_size;
+    int32_t min_cx = (int32_t)floorf((center_x - radius) * chunk_size_inv);
+    int32_t max_cx = (int32_t)floorf((center_x + radius) * chunk_size_inv);
+    int32_t min_cy = (int32_t)floorf((center_y - radius) * chunk_size_inv);
+    int32_t max_cy = (int32_t)floorf((center_y + radius) * chunk_size_inv);
 
     // Clamp
     if (min_cx < 0) min_cx = 0;
@@ -219,4 +222,18 @@ bool spatial_iter_next(ChunkIterator* iter, uint32_t* particle_idx_out) {
     }
 
     return false;
+}
+
+float spatial_get_chunk_size(const SpatialSystem* system) {
+    return system ? system->chunk_size : 0.0f;
+}
+
+uint32_t spatial_get_chunk_count(const SpatialSystem* system) {
+    return system ? system->max_chunks : 0;
+}
+
+void spatial_get_dimensions(const SpatialSystem* system, uint32_t* out_chunks_x, uint32_t* out_chunks_y) {
+    if (!system) return;
+    if (out_chunks_x) *out_chunks_x = system->chunks_x;
+    if (out_chunks_y) *out_chunks_y = system->chunks_y;
 }

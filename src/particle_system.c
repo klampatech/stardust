@@ -26,7 +26,7 @@ ParticleSystem* particle_system_create(float world_width, float world_height, ui
         return NULL;
     }
 
-    system->spatial = spatial_create(world_width, world_height, max_particles);
+    system->spatial = spatial_create(world_width, world_height, max_particles, 0.0f);  // 0 = use default chunk size
     if (!system->spatial) {
         pool_destroy(system->pool);
         free(system);
