@@ -10,6 +10,7 @@ set(SOURCES
     src/particle_pool.c
     src/spatial_chunks.c
     src/particle_system.c
+    src/black_hole.c
     src/gdextension_interface.c
 )
 
@@ -19,6 +20,7 @@ set(HEADERS
     include/particle_pool.h
     include/spatial_chunks.h
     include/particle_system.h
+    include/black_hole.h
     include/gdextension_interface.h
 )
 

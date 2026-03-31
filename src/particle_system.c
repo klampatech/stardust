@@ -36,6 +36,7 @@ ParticleSystem* particle_system_create(float world_width, float world_height, ui
     system->world_width = world_width;
     system->world_height = world_height;
     system->template_count = 0;
+    system->black_hole = NULL;  // No black hole initially
     system->initialized = true;
 
     // Initialize render buffer
@@ -64,6 +65,7 @@ void particle_system_destroy(ParticleSystem* system) {
     if (system->render_buffer.lifetimes) free(system->render_buffer.lifetimes);
     if (system->render_buffer.ids) free(system->render_buffer.ids);
 
+    if (system->black_hole) black_hole_destroy(system->black_hole);
     if (system->spatial) spatial_destroy(system->spatial);
     if (system->pool) pool_destroy(system->pool);
 
@@ -81,6 +83,27 @@ int particle_system_register_template(ParticleSystem* system, const SpawnTemplat
 const SpawnTemplate* particle_system_get_template(const ParticleSystem* system, int template_id) {
     if (!system || template_id < 0 || template_id >= system->template_count) return NULL;
     return &system->templates[template_id];
+}
+
+void particle_system_set_black_hole(ParticleSystem* system, BlackHole* bh) {
+    if (!system) return;
+    if (system->black_hole) {
+        black_hole_destroy(system->black_hole);
+    }
+    system->black_hole = bh;
+}
+
+BlackHole* particle_system_get_black_hole(const ParticleSystem* system) {
+    return system ? system->black_hole : NULL;
+}
+
+const BlackHoleStats* particle_system_get_black_hole_stats(const ParticleSystem* system) {
+    static BlackHoleStats stats_zero = {0};
+    if (!system || !system->black_hole) return &stats_zero;
+
+    static BlackHoleStats cached_stats;
+    black_hole_get_stats(system->black_hole, &cached_stats);
+    return &cached_stats;
 }
 
 uint32_t particle_system_spawn_cluster(ParticleSystem* system, float pos_x, float pos_y,
@@ -144,6 +167,11 @@ void particle_system_despawn_all(ParticleSystem* system) {
 
 void particle_system_update(ParticleSystem* system, float dt) {
     if (!system || !system->initialized) return;
+
+    // Apply black hole gravity first (may destroy particles)
+    if (system->black_hole) {
+        black_hole_apply_gravity(system->black_hole, system->pool, dt);
+    }
 
     ParticlePool* pool = system->pool;
 

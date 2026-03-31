@@ -8,6 +8,7 @@
 #include "../include/material_types.h"
 #include "../include/particle_pool.h"
 #include "../include/spatial_chunks.h"
+#include "../include/black_hole.h"
 
 // Test helper macros
 #define ASSERT_EQ(a, b, msg) do { \
@@ -263,6 +264,277 @@ static int test_50k_particles(void) {
     return 0;
 }
 
+static int test_black_hole_create(void) {
+    printf("Testing black hole creation...\n");
+
+    BlackHoleConfig config = {
+        .mass = 1000.0f,
+        .destruction_radius = 10.0f,
+        .influence_radius = 200.0f
+    };
+
+    BlackHole* bh = black_hole_create(512.0f, 512.0f, &config);
+    ASSERT_TRUE(bh != NULL, "Black hole should be created");
+
+    float x, y;
+    black_hole_get_position(bh, &x, &y);
+    ASSERT_FLOAT_EQ(x, 512.0f, 0.001f, "Black hole X position should be 512");
+    ASSERT_FLOAT_EQ(y, 512.0f, 0.001f, "Black hole Y position should be 512");
+
+    BlackHoleConfig cfg = black_hole_get_config(bh);
+    ASSERT_FLOAT_EQ(cfg.mass, 1000.0f, 0.001f, "Mass should be 1000");
+    ASSERT_FLOAT_EQ(cfg.destruction_radius, 10.0f, 0.001f, "Destruction radius should be 10");
+    ASSERT_FLOAT_EQ(cfg.influence_radius, 200.0f, 0.001f, "Influence radius should be 200");
+
+    black_hole_destroy(bh);
+    printf("  PASS\n");
+    return 0;
+}
+
+static int test_black_hole_destruction_radius(void) {
+    printf("Testing black hole destruction radius...\n");
+
+    BlackHoleConfig config = {
+        .mass = 1000.0f,
+        .destruction_radius = 10.0f,
+        .influence_radius = 200.0f
+    };
+
+    BlackHole* bh = black_hole_create(100.0f, 100.0f, &config);
+
+    // Inside destruction radius
+    ASSERT_TRUE(black_hole_is_within_destruction_radius(bh, 100.0f, 100.0f), "Center should be in destruction radius");
+    ASSERT_TRUE(black_hole_is_within_destruction_radius(bh, 105.0f, 100.0f), "Point at 5 units should be in destruction radius");
+    ASSERT_TRUE(black_hole_is_within_destruction_radius(bh, 100.0f, 108.0f), "Point at 8 units should be in destruction radius");
+
+    // Outside destruction radius
+    ASSERT_TRUE(!black_hole_is_within_destruction_radius(bh, 120.0f, 100.0f), "Point at 20 units should be outside destruction radius");
+    ASSERT_TRUE(!black_hole_is_within_destruction_radius(bh, 100.0f, 130.0f), "Point at 30 units should be outside destruction radius");
+
+    black_hole_destroy(bh);
+    printf("  PASS\n");
+    return 0;
+}
+
+static int test_black_hole_influence_radius(void) {
+    printf("Testing black hole influence radius...\n");
+
+    BlackHoleConfig config = {
+        .mass = 1000.0f,
+        .destruction_radius = 10.0f,
+        .influence_radius = 200.0f
+    };
+
+    BlackHole* bh = black_hole_create(100.0f, 100.0f, &config);
+
+    // Inside influence radius
+    ASSERT_TRUE(black_hole_is_within_influence_radius(bh, 100.0f, 100.0f), "Center should be in influence radius");
+    ASSERT_TRUE(black_hole_is_within_influence_radius(bh, 150.0f, 100.0f), "Point at 50 units should be in influence radius");
+    ASSERT_TRUE(black_hole_is_within_influence_radius(bh, 250.0f, 100.0f), "Point at 150 units should be in influence radius");
+
+    // Outside influence radius
+    ASSERT_TRUE(!black_hole_is_within_influence_radius(bh, 350.0f, 100.0f), "Point at 250 units should be outside influence radius");
+
+    black_hole_destroy(bh);
+    printf("  PASS\n");
+    return 0;
+}
+
+static int test_black_hole_tidal_factor(void) {
+    printf("Testing black hole tidal factor...\n");
+
+    BlackHoleConfig config = {
+        .mass = 1000.0f,
+        .destruction_radius = 10.0f,
+        .influence_radius = 200.0f
+    };
+
+    BlackHole* bh = black_hole_create(100.0f, 100.0f, &config);
+
+    // At center (inside destruction radius) - maximum tidal
+    float tidal = black_hole_calculate_tidal_factor(bh, 100.0f, 100.0f);
+    ASSERT_FLOAT_EQ(tidal, 5.0f, 0.001f, "Tidal at center should be 5.0");
+
+    // At destruction radius edge - high tidal
+    tidal = black_hole_calculate_tidal_factor(bh, 110.0f, 100.0f);
+    ASSERT_TRUE(tidal > 1.0f && tidal <= 5.0f, "Tidal near destruction radius should be > 1.0");
+
+    // At influence radius edge - normal tidal
+    tidal = black_hole_calculate_tidal_factor(bh, 300.0f, 100.0f);
+    ASSERT_FLOAT_EQ(tidal, 1.0f, 0.001f, "Tidal at influence edge should be 1.0");
+
+    // Outside influence - normal tidal
+    tidal = black_hole_calculate_tidal_factor(bh, 400.0f, 100.0f);
+    ASSERT_FLOAT_EQ(tidal, 1.0f, 0.001f, "Tidal outside influence should be 1.0");
+
+    black_hole_destroy(bh);
+    printf("  PASS\n");
+    return 0;
+}
+
+static int test_black_hole_gravity_particle_destruction(void) {
+    printf("Testing black hole particle destruction...\n");
+
+    ParticlePool* pool = pool_create(100);
+    ASSERT_TRUE(pool != NULL, "Pool should be created");
+
+    BlackHoleConfig config = {
+        .mass = 1000.0f,
+        .destruction_radius = 20.0f,
+        .influence_radius = 200.0f
+    };
+
+    BlackHole* bh = black_hole_create(100.0f, 100.0f, &config);
+
+    // Spawn particle inside destruction radius
+    Particle* p = pool_spawn(pool);
+    ASSERT_TRUE(p != NULL, "Should spawn particle");
+
+    // Place particle inside event horizon (at center)
+    p->x = 100.0f;
+    p->y = 100.0f;
+    p->vx = 0.0f;
+    p->vy = 0.0f;
+    p->mass = 1.0f;
+    p->lifetime = 1000;
+
+    // Apply gravity
+    uint32_t destroyed = black_hole_apply_gravity(bh, pool, 0.016f);
+
+    ASSERT_EQ(destroyed, 1u, "Should have destroyed 1 particle");
+    ASSERT_EQ(pool->active_count, 0u, "Pool should be empty after destruction");
+
+    // Check stats
+    BlackHoleStats stats;
+    black_hole_get_stats(bh, &stats);
+    ASSERT_EQ(stats.particles_consumed, 1u, "Should have consumed 1 particle");
+    ASSERT_FLOAT_EQ(stats.total_mass_consumed, 1.0f, 0.001f, "Should have consumed 1.0 mass");
+
+    black_hole_destroy(bh);
+    pool_destroy(pool);
+    printf("  PASS\n");
+    return 0;
+}
+
+static int test_black_hole_gravity_particle_attraction(void) {
+    printf("Testing black hole gravitational attraction...\n");
+
+    ParticlePool* pool = pool_create(100);
+    ASSERT_TRUE(pool != NULL, "Pool should be created");
+
+    BlackHoleConfig config = {
+        .mass = 10000.0f,
+        .destruction_radius = 10.0f,
+        .influence_radius = 200.0f
+    };
+
+    BlackHole* bh = black_hole_create(100.0f, 100.0f, &config);
+
+    // Spawn particle at distance (inside influence, outside destruction)
+    Particle* p = pool_spawn(pool);
+    ASSERT_TRUE(p != NULL, "Should spawn particle");
+
+    // Place particle at 100 units away, stationary
+    p->x = 200.0f;
+    p->y = 100.0f;
+    p->vx = 0.0f;
+    p->vy = 0.0f;
+    p->mass = 1.0f;
+    p->lifetime = 1000;
+
+    float initial_vx = p->vx;
+    float initial_vy = p->vy;
+
+    // Apply gravity
+    uint32_t destroyed = black_hole_apply_gravity(bh, pool, 0.016f);
+
+    ASSERT_EQ(destroyed, 0u, "Should not have destroyed particle");
+    ASSERT_TRUE(p->vx != initial_vx || p->vy != initial_vy, "Particle velocity should change");
+
+    black_hole_destroy(bh);
+    pool_destroy(pool);
+    printf("  PASS\n");
+    return 0;
+}
+
+static int test_black_hole_particle_system_integration(void) {
+    printf("Testing black hole particle system integration...\n");
+
+    ParticleSystem* sys = particle_system_create(1024.0f, 1024.0f, 1000);
+    ASSERT_TRUE(sys != NULL, "Particle system should be created");
+
+    // Create and set black hole
+    BlackHoleConfig config = {
+        .mass = 5000.0f,
+        .destruction_radius = 30.0f,
+        .influence_radius = 300.0f
+    };
+
+    BlackHole* bh = black_hole_create(512.0f, 512.0f, &config);
+    particle_system_set_black_hole(sys, bh);
+
+    // Verify black hole is set
+    ASSERT_TRUE(particle_system_get_black_hole(sys) == bh, "Black hole should be retrievable");
+
+    // Register a template and spawn particles
+    SpawnTemplate template = {
+        .material = MATERIAL_ROCK,
+        .spread_radius = 5.0f,
+        .velocity_min = 0.0f,
+        .velocity_max = 0.0f,
+        .mass_modifier = 1.0f,
+        .base_lifetime = 10000
+    };
+
+    int template_id = particle_system_register_template(sys, &template);
+    ASSERT_TRUE(template_id >= 0, "Template should be registered");
+
+    // Spawn particles near black hole (some will be destroyed immediately)
+    uint32_t spawned = particle_system_spawn_cluster(sys, 512.0f, 512.0f, template_id, 100);
+    ASSERT_TRUE(spawned > 0, "Should spawn some particles");
+
+    // Update (black hole will pull and destroy some)
+    for (int i = 0; i < 10; i++) {
+        particle_system_update(sys, 0.016f);
+    }
+
+    // Get black hole stats
+    const BlackHoleStats* stats = particle_system_get_black_hole_stats(sys);
+    ASSERT_TRUE(stats != NULL, "Stats should be retrievable");
+
+    particle_system_destroy(sys);
+    printf("  PASS\n");
+    return 0;
+}
+
+static int test_black_hole_stats_reset(void) {
+    printf("Testing black hole stats reset...\n");
+
+    BlackHoleConfig config = {
+        .mass = 1000.0f,
+        .destruction_radius = 10.0f,
+        .influence_radius = 200.0f
+    };
+
+    BlackHole* bh = black_hole_create(100.0f, 100.0f, &config);
+
+    // Add some consumed mass/particles
+    bh->particles_consumed = 10;
+    bh->total_mass_consumed = 50.0f;
+
+    // Reset stats
+    black_hole_reset_stats(bh);
+
+    BlackHoleStats stats;
+    black_hole_get_stats(bh, &stats);
+    ASSERT_EQ(stats.particles_consumed, 0u, "Particles consumed should be 0 after reset");
+    ASSERT_FLOAT_EQ(stats.total_mass_consumed, 0.0f, 0.001f, "Total mass consumed should be 0 after reset");
+
+    black_hole_destroy(bh);
+    printf("  PASS\n");
+    return 0;
+}
+
 int main(void) {
     printf("\n=== Particle System Tests ===\n\n");
 
@@ -273,6 +545,14 @@ int main(void) {
     result |= test_spatial_chunk_configurable();
     result |= test_particle_system();
     result |= test_50k_particles();
+    result |= test_black_hole_create();
+    result |= test_black_hole_destruction_radius();
+    result |= test_black_hole_influence_radius();
+    result |= test_black_hole_tidal_factor();
+    result |= test_black_hole_gravity_particle_destruction();
+    result |= test_black_hole_gravity_particle_attraction();
+    result |= test_black_hole_particle_system_integration();
+    result |= test_black_hole_stats_reset();
 
     printf("\n%s: %s\n", result == 0 ? "ALL TESTS PASSED" : "SOME TESTS FAILED",
            result == 0 ? "OK" : "FAILURES");

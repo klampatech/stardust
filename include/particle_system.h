@@ -9,6 +9,7 @@
 #include "particle_pool.h"
 #include "spatial_chunks.h"
 #include "material_types.h"
+#include "black_hole.h"
 
 // Spawn template for cluster creation
 typedef struct SpawnTemplate {
@@ -36,6 +37,7 @@ typedef struct ParticleBuffer {
 typedef struct ParticleSystem {
     ParticlePool* pool;
     SpatialSystem* spatial;
+    BlackHole* black_hole;           // Central black hole (may be NULL)
     SpawnTemplate templates[16];  // Up to 16 spawn templates
     uint8_t template_count;
     ParticleBuffer render_buffer;  // Read-only buffer for Godot
@@ -51,6 +53,11 @@ void particle_system_destroy(ParticleSystem* system);
 // Template management
 int particle_system_register_template(ParticleSystem* system, const SpawnTemplate* tmpl);
 const SpawnTemplate* particle_system_get_template(const ParticleSystem* system, int template_id);
+
+// Black hole management
+void particle_system_set_black_hole(ParticleSystem* system, BlackHole* bh);
+BlackHole* particle_system_get_black_hole(const ParticleSystem* system);
+const BlackHoleStats* particle_system_get_black_hole_stats(const ParticleSystem* system);
 
 // Particle spawning
 uint32_t particle_system_spawn_cluster(ParticleSystem* system, float pos_x, float pos_y,
