@@ -92,3 +92,62 @@ void gd_particle_system_get_stats(ParticleSystemHandle handle, ParticleSystemSta
         particle_system_get_stats((ParticleSystem*)handle, out_stats);
     }
 }
+
+void gd_particle_system_pause(ParticleSystemHandle handle) {
+    if (handle) {
+        particle_system_pause((ParticleSystem*)handle);
+    }
+}
+
+void gd_particle_system_resume(ParticleSystemHandle handle) {
+    if (handle) {
+        particle_system_resume((ParticleSystem*)handle);
+    }
+}
+
+bool gd_particle_system_is_paused(ParticleSystemHandle handle) {
+    if (!handle) return false;
+    return particle_system_is_paused((ParticleSystem*)handle);
+}
+
+void gd_particle_system_step(ParticleSystemHandle handle, float dt) {
+    if (handle) {
+        particle_system_step((ParticleSystem*)handle, dt);
+    }
+}
+
+void gd_particle_system_set_black_hole(ParticleSystemHandle handle,
+                                        float mass, float radius, float influence,
+                                        float pos_x, float pos_y) {
+    if (handle) {
+        particle_system_set_black_hole((ParticleSystem*)handle, mass, radius, influence, pos_x, pos_y);
+    }
+}
+
+void gd_particle_system_get_black_hole(ParticleSystemHandle handle, BlackHoleConfig* out_config) {
+    if (handle) {
+        particle_system_get_black_hole((ParticleSystem*)handle, out_config);
+    }
+}
+
+void gd_particle_system_get_black_hole_stats(ParticleSystemHandle handle, BlackHoleStats* out_stats) {
+    if (handle) {
+        particle_system_get_black_hole_stats((ParticleSystem*)handle, out_stats);
+    }
+}
+
+void gd_particle_system_clear_black_hole_stats(ParticleSystemHandle handle) {
+    if (handle) {
+        particle_system_clear_black_hole_stats((ParticleSystem*)handle);
+    }
+}
+
+uint32_t gd_particle_system_get_chunk_count(ParticleSystemHandle handle) {
+    if (!handle) return 0;
+    return particle_system_get_chunk_count((ParticleSystem*)handle);
+}
+
+uint32_t gd_particle_system_get_active_chunks(ParticleSystemHandle handle, uint32_t* out_chunk_ids, uint32_t max_chunks) {
+    if (!handle) return 0;
+    return particle_system_get_active_chunks((ParticleSystem*)handle, out_chunk_ids, max_chunks);
+}

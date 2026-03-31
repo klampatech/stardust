@@ -32,6 +32,29 @@ typedef struct ParticleBuffer {
     uint32_t capacity;        // Buffer capacity
 } ParticleBuffer;
 
+// Black hole configuration
+typedef struct BlackHoleConfig {
+    float mass;           // Gravitational mass
+    float radius;         // Event horizon radius
+    float influence;      // Pull radius for particle attraction
+    float position_x;      // Black hole X position
+    float position_y;      // Black hole Y position
+    bool active;          // Is black hole active
+} BlackHoleConfig;
+
+// Black hole statistics
+typedef struct BlackHoleStats {
+    uint64_t destruction_count;  // Total particles consumed
+    float total_mass_absorbed;    // Cumulative mass absorbed
+} BlackHoleStats;
+
+// Simulation state
+typedef enum {
+    SIM_RUNNING = 0,
+    SIM_PAUSED = 1,
+    SIM_STEPPING = 2  // Single step mode
+} SimulationState;
+
 // Main particle system instance
 typedef struct ParticleSystem {
     ParticlePool* pool;
@@ -42,6 +65,9 @@ typedef struct ParticleSystem {
     float world_width;
     float world_height;
     bool initialized;
+    SimulationState sim_state;
+    BlackHoleConfig black_hole;
+    BlackHoleStats black_hole_stats;
 } ParticleSystem;
 
 // System lifecycle
@@ -83,5 +109,21 @@ typedef struct ParticleSystemStats {
 } ParticleSystemStats;
 
 void particle_system_get_stats(const ParticleSystem* system, ParticleSystemStats* out_stats);
+
+// Simulation control
+void particle_system_pause(ParticleSystem* system);
+void particle_system_resume(ParticleSystem* system);
+bool particle_system_is_paused(const ParticleSystem* system);
+void particle_system_step(ParticleSystem* system, float dt);
+
+// Black hole management
+void particle_system_set_black_hole(ParticleSystem* system, float mass, float radius, float influence, float pos_x, float pos_y);
+void particle_system_get_black_hole(const ParticleSystem* system, BlackHoleConfig* out_config);
+void particle_system_get_black_hole_stats(const ParticleSystem* system, BlackHoleStats* out_stats);
+void particle_system_clear_black_hole_stats(ParticleSystem* system);
+
+// Chunk queries
+uint32_t particle_system_get_chunk_count(const ParticleSystem* system);
+uint32_t particle_system_get_active_chunks(const ParticleSystem* system, uint32_t* out_chunk_ids, uint32_t max_chunks);
 
 #endif // PARTICLE_SYSTEM_H

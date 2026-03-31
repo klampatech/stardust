@@ -37,6 +37,19 @@ ParticleSystem* particle_system_create(float world_width, float world_height, ui
     system->world_height = world_height;
     system->template_count = 0;
     system->initialized = true;
+    system->sim_state = SIM_RUNNING;
+
+    // Initialize black hole
+    system->black_hole.active = false;
+    system->black_hole.mass = 0.0f;
+    system->black_hole.radius = 0.0f;
+    system->black_hole.influence = 0.0f;
+    system->black_hole.position_x = 0.0f;
+    system->black_hole.position_y = 0.0f;
+
+    // Initialize black hole stats
+    system->black_hole_stats.destruction_count = 0;
+    system->black_hole_stats.total_mass_absorbed = 0.0f;
 
     // Initialize render buffer
     system->render_buffer.positions = (float*)malloc(sizeof(float) * 2 * max_particles);
@@ -144,6 +157,7 @@ void particle_system_despawn_all(ParticleSystem* system) {
 
 void particle_system_update(ParticleSystem* system, float dt) {
     if (!system || !system->initialized) return;
+    if (system->sim_state == SIM_PAUSED) return;
 
     ParticlePool* pool = system->pool;
 
@@ -247,4 +261,71 @@ void particle_system_get_stats(const ParticleSystem* system, ParticleSystemStats
     out_stats->active_chunks = system->spatial->active_chunk_count;
     out_stats->update_time_ms = 0.0f;
     out_stats->render_buffer_time_ms = 0.0f;
+}
+
+void particle_system_pause(ParticleSystem* system) {
+    if (!system) return;
+    system->sim_state = SIM_PAUSED;
+}
+
+void particle_system_resume(ParticleSystem* system) {
+    if (!system) return;
+    system->sim_state = SIM_RUNNING;
+}
+
+bool particle_system_is_paused(const ParticleSystem* system) {
+    if (!system) return false;
+    return system->sim_state == SIM_PAUSED;
+}
+
+void particle_system_step(ParticleSystem* system, float dt) {
+    if (!system || !system->initialized) return;
+    if (system->sim_state != SIM_PAUSED) return;
+    particle_system_update(system, dt);
+}
+
+void particle_system_set_black_hole(ParticleSystem* system, float mass, float radius, float influence, float pos_x, float pos_y) {
+    if (!system) return;
+    system->black_hole.mass = mass;
+    system->black_hole.radius = radius;
+    system->black_hole.influence = influence;
+    system->black_hole.position_x = pos_x;
+    system->black_hole.position_y = pos_y;
+    system->black_hole.active = (mass > 0.0f && radius > 0.0f);
+}
+
+void particle_system_get_black_hole(const ParticleSystem* system, BlackHoleConfig* out_config) {
+    if (!system || !out_config) return;
+    *out_config = system->black_hole;
+}
+
+void particle_system_get_black_hole_stats(const ParticleSystem* system, BlackHoleStats* out_stats) {
+    if (!system || !out_stats) return;
+    out_stats->destruction_count = system->black_hole_stats.destruction_count;
+    out_stats->total_mass_absorbed = system->black_hole_stats.total_mass_absorbed;
+}
+
+void particle_system_clear_black_hole_stats(ParticleSystem* system) {
+    if (!system) return;
+    system->black_hole_stats.destruction_count = 0;
+    system->black_hole_stats.total_mass_absorbed = 0.0f;
+}
+
+uint32_t particle_system_get_chunk_count(const ParticleSystem* system) {
+    if (!system) return 0;
+    return spatial_get_chunk_count(system->spatial);
+}
+
+uint32_t particle_system_get_active_chunks(const ParticleSystem* system, uint32_t* out_chunk_ids, uint32_t max_chunks) {
+    if (!system || !out_chunk_ids) return 0;
+
+    SpatialSystem* spatial = system->spatial;
+    uint32_t count = 0;
+
+    for (uint32_t i = 0; i < spatial->chunks_x * spatial->chunks_y && count < max_chunks; i++) {
+        if (spatial->chunks[i].particle_count > 0) {
+            out_chunk_ids[count++] = i;
+        }
+    }
+    return count;
 }

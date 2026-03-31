@@ -13,6 +13,9 @@ extern "C" {
 // Opaque handle to particle system instance
 typedef void* ParticleSystemHandle;
 
+// Forward declare black hole types (already in particle_system.h)
+// BlackHoleConfig and BlackHoleStats are in particle_system.h
+
 // Lifecycle (call from Godot _init / _ready)
 ParticleSystemHandle gd_particle_system_create(float world_width, float world_height, uint32_t max_particles);
 void gd_particle_system_destroy(ParticleSystemHandle handle);
@@ -55,6 +58,24 @@ bool gd_particle_system_get_particle(ParticleSystemHandle handle, uint32_t parti
 // Stats (for debugging/monitoring)
 void gd_particle_system_get_stats(ParticleSystemHandle handle, ParticleSystemStats* out_stats);
 
+// Simulation control
+void gd_particle_system_pause(ParticleSystemHandle handle);
+void gd_particle_system_resume(ParticleSystemHandle handle);
+bool gd_particle_system_is_paused(ParticleSystemHandle handle);
+void gd_particle_system_step(ParticleSystemHandle handle, float dt);
+
+// Black hole management
+void gd_particle_system_set_black_hole(ParticleSystemHandle handle,
+                                        float mass, float radius, float influence,
+                                        float pos_x, float pos_y);
+void gd_particle_system_get_black_hole(ParticleSystemHandle handle, BlackHoleConfig* out_config);
+void gd_particle_system_get_black_hole_stats(ParticleSystemHandle handle, BlackHoleStats* out_stats);
+void gd_particle_system_clear_black_hole_stats(ParticleSystemHandle handle);
+
+// Chunk queries
+uint32_t gd_particle_system_get_chunk_count(ParticleSystemHandle handle);
+uint32_t gd_particle_system_get_active_chunks(ParticleSystemHandle handle, uint32_t* out_chunk_ids, uint32_t max_chunks);
+
 // Exported function names for GDExtension registration
 #define GD_PARTICLE_CREATE "gd_particle_system_create"
 #define GD_PARTICLE_DESTROY "gd_particle_system_destroy"
@@ -68,6 +89,16 @@ void gd_particle_system_get_stats(ParticleSystemHandle handle, ParticleSystemSta
 #define GD_PARTICLE_GET_COUNT "gd_particle_system_get_count"
 #define GD_PARTICLE_GET_PARTICLE "gd_particle_system_get_particle"
 #define GD_PARTICLE_GET_STATS "gd_particle_system_get_stats"
+#define GD_PARTICLE_PAUSE "gd_particle_system_pause"
+#define GD_PARTICLE_RESUME "gd_particle_system_resume"
+#define GD_PARTICLE_IS_PAUSED "gd_particle_system_is_paused"
+#define GD_PARTICLE_STEP "gd_particle_system_step"
+#define GD_PARTICLE_SET_BLACK_HOLE "gd_particle_system_set_black_hole"
+#define GD_PARTICLE_GET_BLACK_HOLE "gd_particle_system_get_black_hole"
+#define GD_PARTICLE_GET_BLACK_HOLE_STATS "gd_particle_system_get_black_hole_stats"
+#define GD_PARTICLE_CLEAR_BLACK_HOLE_STATS "gd_particle_system_clear_black_hole_stats"
+#define GD_PARTICLE_GET_CHUNK_COUNT "gd_particle_system_get_chunk_count"
+#define GD_PARTICLE_GET_ACTIVE_CHUNKS "gd_particle_system_get_active_chunks"
 
 #ifdef __cplusplus
 }
