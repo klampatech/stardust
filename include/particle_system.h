@@ -41,6 +41,19 @@ typedef struct ParticleSystem {
     ParticleBuffer render_buffer;  // Read-only buffer for Godot
     float world_width;
     float world_height;
+
+    // Black hole for spatial culling
+    float black_hole_x;
+    float black_hole_y;
+    float black_hole_influence_radius;
+
+    // Performance metrics (updated each frame)
+    float update_time_ms;
+    uint32_t particles_per_frame;
+    uint32_t active_chunk_count;
+
+    // Benchmark mode
+    bool benchmark_mode;
     bool initialized;
 } ParticleSystem;
 
@@ -80,8 +93,17 @@ typedef struct ParticleSystemStats {
     uint32_t active_chunks;
     float update_time_ms;
     float render_buffer_time_ms;
+    uint32_t particles_per_frame;
 } ParticleSystemStats;
 
 void particle_system_get_stats(const ParticleSystem* system, ParticleSystemStats* out_stats);
+
+// Black hole configuration for spatial culling
+void particle_system_set_black_hole(ParticleSystem* system, float x, float y, float influence_radius);
+void particle_system_get_black_hole(const ParticleSystem* system, float* out_x, float* out_y, float* out_radius);
+
+// Benchmark mode
+void particle_system_enable_benchmark(ParticleSystem* system, bool enable);
+bool particle_system_is_benchmark_enabled(const ParticleSystem* system);
 
 #endif // PARTICLE_SYSTEM_H

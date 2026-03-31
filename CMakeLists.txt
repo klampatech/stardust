@@ -19,6 +19,7 @@ set(HEADERS
     include/particle_pool.h
     include/spatial_chunks.h
     include/particle_system.h
+    include/simd_vector.h
     include/gdextension_interface.h
 )
 
@@ -30,9 +31,16 @@ target_include_directories(stardust_particles PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# Compiler warnings
+# Compiler warnings and SIMD flags
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(stardust_particles PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(stardust_particles PRIVATE -Wall -Wextra -Wpedantic -msse2 -mavx2)
+endif()
+
+# Enable AVX2 for tests as well
+if(BUILD_TESTS)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(test_particle_system PRIVATE -msse2 -mavx2)
+    endif()
 endif()
 
 # Build options
