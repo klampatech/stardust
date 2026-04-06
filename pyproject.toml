@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vault-sentry"
+version = "0.1.0"
+description = "Vault Sentry - Monitoring and reporting tool"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+vault-sentry = "vault_sentry.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vault_sentry*"]
