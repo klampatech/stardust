@@ -1,0 +1,9 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_server_host": "127.0.0.1",
+  "dolt_server_port": 3307,
+  "dolt_database": "stardust",
+  "project_id": "7aaa1f5a-c57b-4efc-ba4c-0a1ee491b0da"
+}

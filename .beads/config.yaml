@@ -1,0 +1,3 @@
+prefix: st
+issue-prefix: st
+dolt.idle-timeout: "0"
